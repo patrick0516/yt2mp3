@@ -60,6 +60,25 @@ python app.py
 
 可部署於 Render、Heroku、Google Cloud Run、AWS、DigitalOcean 等平台。
 
+## Docker 部署（推薦 Render、Railway、Fly.io 等平台）
+
+1. 專案根目錄已內建 Dockerfile，內容如下：
+   ```dockerfile
+   FROM python:3.11-slim
+   RUN apt-get update && apt-get install -y ffmpeg
+   WORKDIR /app
+   COPY . /app
+   RUN pip install --upgrade pip
+   RUN pip install -r requirements.txt
+   EXPOSE 10000
+   CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+   ```
+2. 推送到 GitHub。
+3. Render 建立 Web Service 時，選擇你的 repo，Render 會自動偵測 Dockerfile。
+   - Build Command、Start Command 留空即可。
+   - 其他設定照預設。
+4. 等待自動建置與啟動，完成後即可用 Render 提供的網址訪問。
+
 ## 注意事項
 - 請遵守 YouTube 服務條款，僅供個人學習/備份用途
 - 不可用於商業用途，請尊重版權
