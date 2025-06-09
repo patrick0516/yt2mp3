@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube 轉 MP3</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube 轉 MP3</h1>
+        <input type="text" id="url" placeholder="請輸入 YouTube 網址">
+        <br>
+        <button onclick="downloadVideo()">下載</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function downloadVideo() {
+            const url = document.getElementById('url').value;
+            const status = document.getElementById('status');
+            
+            if (!url) {
+                status.textContent = '請輸入 YouTube 網址';
+                return;
+            }
+            
+            status.textContent = '正在下載...';
+            
+            fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `url=${encodeURIComponent(url)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    status.textContent = data.error;
+                } else {
+                    status.textContent = '下載完成！';
+                    window.location.href = `/download/${data.download_id}`;
+                }
+            })
+            .catch(error => {
+                status.textContent = '下載失敗：' + error;
+            });
+        }
+    </script>
+</body>
+</html> 
