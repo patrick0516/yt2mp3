@@ -58,26 +58,152 @@ python app.py
 
 ## 雲端部署
 
-可部署於 Render、Heroku、Google Cloud Run、AWS、DigitalOcean 等平台。
+可部署於 Render、Heroku、Google Cloud Run、AWS、DigitalOcean、Linode 等平台。
 
-## Docker 部署（推薦 Render、Railway、Fly.io 等平台）
+## Docker 部署（推薦 Render、Railway、Fly.io、Linode 等平台）
 
-1. 專案根目錄已內建 Dockerfile，內容如下：
+1. 專案根目錄已內建 Dockerfile 和 docker-compose.yml，內容如下：
+
+   **Dockerfile**:
    ```dockerfile
-   FROM python:3.11-slim
-   RUN apt-get update && apt-get install -y ffmpeg
+   FROM python:3.9-slim
+
    WORKDIR /app
-   COPY . /app
-   RUN pip install --upgrade pip
-   RUN pip install -r requirements.txt
-   EXPOSE 10000
-   CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+
+   RUN apt-get update && apt-get install -y \
+       ffmpeg \
+       && rm -rf /var/lib/apt/lists/*
+
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+
+   COPY . .
+
+   EXPOSE 5000
+
+   CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
    ```
+
+   **docker-compose.yml**:
+   ```yaml
+   version: '3'
+   services:
+     web:
+       build: .
+       ports:
+         - "5000:5000"
+       volumes:
+         - ./downloads:/app/downloads
+       restart: always
+   ```
+
 2. 推送到 GitHub。
-3. Render 建立 Web Service 時，選擇你的 repo，Render 會自動偵測 Dockerfile。
+
+### Render 部署
+1. Render 建立 Web Service 時，選擇你的 repo，Render 會自動偵測 Dockerfile。
    - Build Command、Start Command 留空即可。
    - 其他設定照預設。
-4. 等待自動建置與啟動，完成後即可用 Render 提供的網址訪問。
+2. 等待自動建置與啟動，完成後即可用 Render 提供的網址訪問。
+
+### Linode 部署（推薦）
+
+1. **註冊與建立 Linode 主機**
+   - 前往 [Linode 官網](https://www.linode.com/) 註冊帳號（需綁定信用卡）。
+   - 登入後，點選「Create」→「Linode」。
+   - 選擇映像檔（Image）：**Ubuntu 22.04 LTS**。
+   - 選擇地區（Region）：建議選亞洲（如 Tokyo、Singapore）。
+   - 選擇方案（Plan）：**Shared CPU / Nanode 1GB ($5/mo)**。
+   - 設定 root 密碼（請記好！）。
+   - 點「Create Linode」建立主機。
+   - 等待幾分鐘，Linode 會分配一個 **公開 IP**。
+
+2. **連線到 Linode 主機**
+   ```bash
+   ssh root@你的Linode IP
+   ```
+   （第一次連線會問你是否信任，輸入 yes）
+
+3. **安裝 Docker & Docker Compose**
+   ```bash
+   apt update
+   apt install -y docker.io docker-compose git
+   systemctl enable --now docker
+   ```
+
+4. **下載你的專案**
+   ```bash
+   git clone https://github.com/patrick0516/yt2mp3.git
+   cd yt2mp3
+   ```
+
+5. **啟動專案（Docker Compose）**
+   ```bash
+   docker-compose up -d
+   ```
+
+6. **開放防火牆（如有）**
+   Linode 預設所有 port 都開放，但建議只開 80/443/5000：
+   ```bash
+   ufw allow 22
+   ufw allow 80
+   ufw allow 443
+   ufw allow 5000
+   ufw enable
+   ```
+   （如有用 UFW 防火牆）
+
+7. **安裝 Nginx 反向代理（可選，建議）**
+   這樣你可以用 80/443 port（http/https）存取，不用記 port 號。
+   ```bash
+   apt install -y nginx
+   ```
+   
+   建立 Nginx 設定檔 `/etc/nginx/sites-available/yt2mp3`：
+   ```nginx
+   server {
+       listen 80;
+       server_name _;
+
+       location / {
+           proxy_pass http://localhost:5000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+   
+   啟用設定並重啟 Nginx：
+   ```bash
+   ln -s /etc/nginx/sites-available/yt2mp3 /etc/nginx/sites-enabled/
+   nginx -t
+   systemctl restart nginx
+   ```
+
+8. **用瀏覽器測試**
+   打開 `http://你的Linode IP/`  
+   應該就能看到你的 yt2mp3 網頁！
+
+9. **（可選）綁定自訂網域**
+   - 在你的網域 DNS 設定 A 記錄，指向 Linode IP。
+   - 修改 Nginx 設定 `server_name` 為你的網域。
+   - 可用 [Let's Encrypt](https://certbot.eff.org/instructions) 免費申請 SSL。
+
+10. **（可選）自動重啟/開機自啟**
+    Docker Compose 會自動重啟容器。  
+    如需更進階監控，可用 systemd 或 supervisor。
+
+### Linode 部署常見問題
+
+1. **如果 docker-compose 報錯**  
+   請確認 `docker-compose.yml` 內容正確，且檔案名稱是 `docker-compose.yml`（不是 `docker-compose.yaml`）。
+
+2. **如果容器啟動失敗**  
+   請執行 `docker-compose logs` 看錯誤訊息。
+
+3. **如果網站打不開**  
+   請確認 Linode 防火牆有開放 5000 port，或改用 Nginx 反向代理（用 80 port）。
 
 ## 注意事項
 - 請遵守 YouTube 服務條款，僅供個人學習/備份用途
