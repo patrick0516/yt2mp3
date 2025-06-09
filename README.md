@@ -215,5 +215,11 @@ python app.py
 - 音訊處理：FFmpeg
 - YouTube 下載：yt-dlp
 
+## linode
+停用重啟
+sudo systemctl stop yt2mp3
+sudo systemctl restart yt2mp3
+sudo systemctl disable yt2mp3
+
 ## 貢獻
 歡迎提交 Pull Request 或 Issue 來改進這個專案！ 
