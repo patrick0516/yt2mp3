@@ -89,8 +89,5 @@ python app.py
 - 音訊處理：FFmpeg
 - YouTube 下載：yt-dlp
 
-## 授權
-MIT License
-
 ## 貢獻
 歡迎提交 Pull Request 或 Issue 來改進這個專案！ 
